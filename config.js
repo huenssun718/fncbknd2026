@@ -1,2 +1,4 @@
-// 僅填 Supabase Project URL 及 publishable / anon 公開金鑰，絕不可填 service_role。
-window.FNC_CONFIG = { supabaseUrl: '', supabaseKey: '' };
+window.FNC_CONFIG = {
+  supabaseUrl: 'https://tvrttaljwoviyhwhmvms.supabase.co',
+  supabaseKey: 'sb_publishable_KTDVtki570cqk-0dFEhEXg_Vecq2Smc'
+};
