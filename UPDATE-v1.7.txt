@@ -1,0 +1,13 @@
+1.7 更新步驟
+
+1. 先備份 Supabase 的 board_posts、board_keys。
+2. 開啟 Supabase SQL Editor，貼上 migration-v1.7.sql 內容並執行。這是增量更新，不會刪除貼文，不需重跑舊 supabase.sql。
+3. 將 index.html、app.js、table.css 上傳 GitHub 覆蓋。保留原 config.js；migration-v1.7.sql 不需上傳網站。
+4. 等待 Pages 部署成功，頁尾確認「介面版本 1.7」。
+5. 用自己的管理連結編輯一篇貼文，確認更新時間改變、發布時間保留。
+
+兩區列表及詳情皆顯示台灣時間 YYYY/MM/DD HH:mm。新貼文的發布與更新時間初始相同；編輯與標記完成會更新時間。舊貼文的歷史修改時間未記錄，顯示「尚無紀錄」，之後首次修改才有時間。既有發布時間不變。
+
+SQL 使用資料庫 trigger 與伺服器時間，不接受訪客指定時間。新增 updated_at 欄位與觸發器，不更動既有管理金鑰驗證或權限。
+
+已測試本機發布、編輯、完成後的時間紀錄與列表顯示；SQL 尚未在你的正式 Supabase 執行驗證。
