@@ -57,3 +57,8 @@ init();
 
 
 
+
+const desktopLayout=matchMedia('(min-width:1024px) and (hover:hover) and (pointer:fine)');
+const primaryNav=document.querySelector('.bottom');
+function placeNavigation(){if(desktopLayout.matches){document.querySelector('.desktop-actions').append(primaryNav)}else{document.body.insertBefore(primaryNav,document.querySelector('#editor'))}}
+desktopLayout.addEventListener('change',placeNavigation);placeNavigation();
