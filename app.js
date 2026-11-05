@@ -1,3 +1,4 @@
+import { findMatches } from './matching.js?v=2.1';
 const $=s=>document.querySelector(s), bands=['FTISLAND','CNBLUE','N.Flying','Hi-Fi Un!corn','AxMxP'];
 const benefits=['HI-TOUCH（擊掌）','SIGNED POSTER（簽名海報）','SPECIAL POLAROID（特別拍立得）','GROUP PHOTO（團體合照）','粉絲自製應援物'];
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}},write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
@@ -42,7 +43,7 @@ let searchTimer;function resetResults(){page=1;refresh()}for(const id of ['day',
 $('#types').onclick=e=>{if(!e.target.dataset.type)return;type=e.target.dataset.type;$('#benefit').value='all';$('#status').value='all';configureFilters();$('#types').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===e.target));resetResults()};
 $('#bands').onclick=e=>{if(!e.target.dataset.band)return;band=e.target.dataset.band;$('#bands').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===e.target));resetResults()};
 document.addEventListener('click',e=>{const close=e.target.closest('[data-close]');if(close)$('#'+close.dataset.close).close();const save=e.target.closest('[data-save]');if(save){const id=save.dataset.save;favorites=favorites.includes(id)?favorites.filter(x=>x!==id):[...favorites,id];write('fnc-favorites',favorites);if(view==='saved')resetResults();else render()}const detail=e.target.closest('[data-detail]');if(detail)showDetail(posts.find(p=>p.id===detail.dataset.detail))});
-function showDetail(p){$('#detailBody').innerHTML=`<div class="dialog-top"><h2>${escape(p.title)}</h2><button class="close" data-close="detail" aria-label="關閉">×</button></div><p class="muted">${escape(bandText(p))} · ${escape(p.type)} · ${escape(p.status)}</p><p>${escape(p.benefit)}</p>${postTimes(p)}${p.type==='交換'?`<div class="exchange-summary"><strong>想交換的福利</strong><p>團體：${escape(p.wanted_band||'未指定')}<br>福利：${escape(p.wanted_benefit||'未指定')}<br>場次：${escape(p.wanted_day||'兩天皆可')}</p></div>`:''}${safeUrl(p.image)?`<img class="detail-image" src="${escape(safeUrl(p.image))}" alt="物品照片">`:''}<p class="detail-copy">${escape(p.description)}</p><p class="detail-copy">日期：${escape(p.days.join('、'))}\n時間與地點：${escape(p.location)}\n發布者：${escape(p.nickname)}</p>${p.demo?'<p class="sample">示範貼文，無實際聯絡對象。</p>':`<a class="link-button" target="_blank" rel="noopener noreferrer" href="${escape(safeUrl(p.contact))}">聯絡發布者 ↗</a>`}${mine(p)?'<div class="actions"><button id="managementLink">管理連結</button><button id="editPost">編輯</button><button id="endPost">標記已結束</button><button id="deletePost">刪除</button></div>':''}`;$('#detail').showModal();if(mine(p)){$('#managementLink').onclick=()=>showLink(p.id);$('#editPost').onclick=()=>{$('#detail').close();openEditor(p)};$('#endPost').onclick=()=>mutate(p,{status:p.type==='交換'?'已完成':'已發完'});$('#deletePost').onclick=()=>{if(confirm('確定刪除這則貼文？'))mutate(p,null)}}}
+function showDetail(p){$('#detailBody').innerHTML=`<div class="dialog-top"><h2>${escape(p.title)}</h2><button class="close" data-close="detail" aria-label="關閉">×</button></div><p class="muted">${escape(bandText(p))} · ${escape(p.type)} · ${escape(p.status)}</p><p>${escape(p.benefit)}</p>${postTimes(p)}${p.type==='交換'?`<div class="exchange-summary"><strong>想交換的福利</strong><p>團體：${escape(p.wanted_band||'未指定')}<br>福利：${escape(p.wanted_benefit||'未指定')}<br>場次：${escape(p.wanted_day||'兩天皆可')}</p></div>`:''}${safeUrl(p.image)?`<img class="detail-image" src="${escape(safeUrl(p.image))}" alt="物品照片">`:''}<p class="detail-copy">${escape(p.description)}</p><p class="detail-copy">日期：${escape(p.days.join('、'))}\n時間與地點：${escape(p.location)}\n發布者：${escape(p.nickname)}</p>${p.demo?'<p class="sample">示範貼文，無實際聯絡對象。</p>':`<a class="link-button" target="_blank" rel="noopener noreferrer" href="${escape(safeUrl(p.contact))}">聯絡發布者 ↗</a>`}${mine(p)?'<div class="actions"><button id="managementLink">管理連結</button><button id="editPost">編輯</button><button id="endPost">標記已結束</button><button id="deletePost">刪除</button></div>':''}`;if(p.type==='交換'&&p.status==='交換中'){const matchBox=document.createElement('section');matchBox.className='match-box';matchBox.innerHTML='<button type="button" class="primary" id="findMatches">找媒合</button><div id="matchResults" aria-live="polite"></div>';$('#detailBody').append(matchBox);matchBox.querySelector('button').onclick=()=>showMatches(p,matchBox)}$('#detail').showModal();if(mine(p)){$('#managementLink').onclick=()=>showLink(p.id);$('#editPost').onclick=()=>{$('#detail').close();openEditor(p)};$('#endPost').onclick=()=>mutate(p,{status:p.type==='交換'?'已完成':'已發完'});$('#deletePost').onclick=()=>{if(confirm('確定刪除這則貼文？'))mutate(p,null)}}}
 async function mutate(p,update){try{if(client){const result=await client.rpc('manage_board_post',{post_id:p.id,manage_token:keys[p.id],payload:update?{...p,...update}:null});if(result.error)throw result.error}else{localPosts=update?localPosts.map(x=>x.id===p.id?{...x,...update,updated_at:new Date().toISOString()}:x):localPosts.filter(x=>x.id!==p.id);write('fnc-posts-v2',localPosts)}$('#detail').close();await refresh();toast('貼文已更新')}catch(e){toast('更新失敗：'+e.message)}}
 $('#postForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),days=f.getAll('days');if(!days.length){$('#formError').textContent='請至少選擇一天場次。';return}const data=Object.fromEntries(f);if(data.type==='領取'){data.bands=f.getAll('bands');if(!data.bands.length){$('#formError').textContent='請至少選擇一個應援團體。';return}data.band=data.bands[0];data.benefit='粉絲自製應援物';data.wanted_band='';data.wanted_benefit='';data.wanted_day='';}if(data.type==='交換')data.bands=[data.band];data.days=days;data.image=data.image||'';delete data.action;if(!safeUrl(data.contact)||data.image&&!safeUrl(data.image)){$('#formError').textContent='請使用有效的 http / https 連結。';return}$('#submitPost').disabled=true;try{const id=editing||crypto.randomUUID(),token=keys[id]||crypto.randomUUID()+crypto.randomUUID();if(client){const result=editing?await client.rpc('manage_board_post',{post_id:id,manage_token:token,payload:data}):await client.rpc('create_board_post',{post_id:id,manage_token:token,payload:data});if(result.error)throw result.error}else{if(editing)localPosts=localPosts.map(p=>p.id===id?{...p,...data,updated_at:new Date().toISOString()}:p);else localPosts.unshift({...data,id,created_at:new Date().toISOString(),updated_at:new Date().toISOString()});write('fnc-posts-v2',localPosts)}keys[id]=token;write('fnc-manage-keys',keys);$('#editor').close();await navigate('mine');if(!editing)showLink(id);toast('已儲存'+(client?'':'至本機瀏覽器'))}catch(err){$('#formError').textContent='儲存失敗：'+err.message}finally{$('#submitPost').disabled=false}};
 function configureFilters(){const ex=type==='交換';$('#publish span').textContent=ex?'發布交換':'發布應援';$('#publish').setAttribute('aria-label',ex?'發布福利交換':'發布飯製應援');$('#benefit').closest('label').hidden=!ex;$('#benefit').innerHTML='<option value="all">全部福利</option>'+benefits.slice(0,4).map(b=>'<option>'+escape(b)+'</option>').join('');$('#status').innerHTML='<option value="all">所有狀態</option>'+(ex?['交換中','已完成']:['準備中','發放中','暫停','已發完']).map(x=>'<option>'+x+'</option>').join('');}
@@ -67,3 +68,44 @@ const desktopLayout=matchMedia('(min-width:1024px) and (hover:hover) and (pointe
 const primaryNav=document.querySelector('.bottom');
 function placeNavigation(){if(desktopLayout.matches){document.querySelector('.desktop-actions').append(primaryNav)}else{document.body.insertBefore(primaryNav,document.querySelector('#editor'))}}
 desktopLayout.addEventListener('change',placeNavigation);placeNavigation();
+
+async function showMatches(source, box) {
+ const button=box.querySelector('button'), results=box.querySelector('#matchResults');
+ button.disabled=true;
+ results.textContent='正在找符合的交換…';
+ try {
+   let candidates=[...localPosts,...samples], current=source;
+   if(client){
+     candidates=[];
+     let cursor;
+     while(true){
+       let query=client.from('board_posts').select('id,type,status,title,nickname,band,benefit,days,wanted_band,wanted_benefit,wanted_day,contact').eq('type','交換').eq('status','交換中').order('id').limit(200);
+       if(cursor)query=query.gt('id',cursor);
+       const {data,error}=await query;
+       if(error)throw error;
+       if(!data.length)break;
+       candidates.push(...data);
+       cursor=data[data.length-1].id;
+     }
+     current=candidates.find(p=>p.id===source.id);
+     if(!current){results.textContent='這篇貼文已不在交換中，請重新整理列表。';return}
+   }
+   const {pairs,cycles}=findMatches(current,candidates);
+   results.innerHTML='<p>依團體、福利及場次比對。請自行聯絡確認，每種最多顯示 20 組。</p><div class="match-switch" aria-label="媒合方式"></div><div class="match-list"></div>';
+   const choices=[['雙人互換',pairs],['三人循環',cycles]];
+   const switcher=results.querySelector('.match-switch'), list=results.querySelector('.match-list');
+   function select(index){
+     [...switcher.children].forEach((el,i)=>el.setAttribute('aria-pressed',String(i===index)));
+     const matches=choices[index][1];
+     list.innerHTML=matches.length?'<ol>'+matches.map(chain=>'<li><ul>'+chain.map((giver,i)=>{
+       const receiver=chain[(i+1)%chain.length];
+       const days=giver.days.filter(day=>receiver.wanted_day==='兩天皆可'||day===receiver.wanted_day);
+       return '<li><strong>'+escape(giver.nickname)+' → '+escape(receiver.nickname)+'</strong><br>'+escape(giver.band+' · '+giver.benefit+' · '+days.join('、'))+'</li>';
+     }).join('')+'</ul><div class="match-links">'+chain.slice(1).map(p=>safeUrl(p.contact)?'<a href="'+escape(safeUrl(p.contact))+'" target="_blank" rel="noopener noreferrer">聯絡 '+escape(p.nickname)+' ↗</a>':'').join('')+'</div></li>').join('')+'</ol>':'<p>目前沒有符合的'+choices[index][0]+'。</p>';
+   }
+   choices.forEach(([label,matches],i)=>{const tab=document.createElement('button');tab.type='button';tab.textContent=label+'（'+matches.length+(matches.length===20?'+':'')+'）';tab.onclick=()=>select(i);switcher.append(tab)});
+   select(pairs.length||!cycles.length?0:1);
+ }catch{results.textContent='媒合資料載入失敗，請再試一次。'}
+ finally{button.disabled=false}
+}
+
