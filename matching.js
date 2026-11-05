@@ -12,11 +12,12 @@ export function findMatches(source, posts, limit = 20) {
   const incoming = candidates.filter(p => fits(p, source));
   const pairs = outgoing.filter(p => fits(p, source)).slice(0, limit).map(p => [source, p]);
   const cycles = [];
+  const leads = candidates.filter(p => fits(source, p) !== fits(p, source)).map(post => ({post, hasWanted: fits(post, source)})).slice(0, limit);
   for (const b of outgoing) {
     for (const c of incoming) {
       if (distinct(b, c) && fits(b, c)) cycles.push([source, b, c]);
-      if (cycles.length === limit) return { pairs, cycles };
+      if (cycles.length === limit) return { pairs, cycles, leads };
     }
   }
-  return { pairs, cycles };
+  return { pairs, cycles, leads };
 }

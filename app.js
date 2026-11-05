@@ -1,4 +1,4 @@
-import { findMatches } from './matching.js?v=2.1';
+import { findMatches } from './matching.js?v=2.1.1';
 const $=s=>document.querySelector(s), bands=['FTISLAND','CNBLUE','N.Flying','Hi-Fi Un!corn','AxMxP'];
 const benefits=['HI-TOUCH（擊掌）','SIGNED POSTER（簽名海報）','SPECIAL POLAROID（特別拍立得）','GROUP PHOTO（團體合照）','粉絲自製應援物'];
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}},write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
@@ -90,13 +90,18 @@ async function showMatches(source, box) {
      current=candidates.find(p=>p.id===source.id);
      if(!current){results.textContent='這篇貼文已不在交換中，請重新整理列表。';return}
    }
-   const {pairs,cycles}=findMatches(current,candidates);
+   const {pairs,cycles,leads=[]}=findMatches(current,candidates);
    results.innerHTML='<p>依團體、福利及場次比對。請自行聯絡確認，每種最多顯示 20 組。</p><div class="match-switch" aria-label="媒合方式"></div><div class="match-list"></div>';
-   const choices=[['雙人互換',pairs],['三人循環',cycles]];
+   const choices=[['雙人互換',pairs],['三人循環',cycles],['單向線索',leads]];
    const switcher=results.querySelector('.match-switch'), list=results.querySelector('.match-list');
    function select(index){
      [...switcher.children].forEach((el,i)=>el.setAttribute('aria-pressed',String(i===index)));
      const matches=choices[index][1];
+     if(index===2){
+       list.innerHTML='<p>只有一方的需求對得上。請先查看對方的需求，再決定是否聯絡。</p>'+
+         (leads.length?'<ol>'+leads.map(({post,hasWanted})=>'<li><strong>'+escape(post.nickname)+' · '+(hasWanted?'持有你想要的福利':'正在找你持有的福利')+'</strong><br>持有：'+escape(post.band+' · '+post.benefit+' · '+post.days.join('、'))+'<br>想換：'+escape(post.wanted_band+' · '+post.wanted_benefit+' · '+post.wanted_day)+(safeUrl(post.contact)?'<br><a href="'+escape(safeUrl(post.contact))+'" target="_blank" rel="noopener noreferrer">聯絡 ↗</a>':'')+'</li>').join('')+'</ol>':'<p>目前沒有單向線索。</p>');
+       return;
+     }
      list.innerHTML=matches.length?'<ol>'+matches.map(chain=>'<li><ul>'+chain.map((giver,i)=>{
        const receiver=chain[(i+1)%chain.length];
        const days=giver.days.filter(day=>receiver.wanted_day==='兩天皆可'||day===receiver.wanted_day);
@@ -104,7 +109,7 @@ async function showMatches(source, box) {
      }).join('')+'</ul><div class="match-links">'+chain.slice(1).map(p=>safeUrl(p.contact)?'<a href="'+escape(safeUrl(p.contact))+'" target="_blank" rel="noopener noreferrer">聯絡 '+escape(p.nickname)+' ↗</a>':'').join('')+'</div></li>').join('')+'</ol>':'<p>目前沒有符合的'+choices[index][0]+'。</p>';
    }
    choices.forEach(([label,matches],i)=>{const tab=document.createElement('button');tab.type='button';tab.textContent=label+'（'+matches.length+(matches.length===20?'+':'')+'）';tab.onclick=()=>select(i);switcher.append(tab)});
-   select(pairs.length||!cycles.length?0:1);
+   select(pairs.length?0:cycles.length?1:leads.length?2:0);
  }catch{results.textContent='媒合資料載入失敗，請再試一次。'}
  finally{button.disabled=false}
 }
